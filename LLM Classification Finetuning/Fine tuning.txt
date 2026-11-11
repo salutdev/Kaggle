@@ -1,0 +1,5 @@
+accelerate==0.25.0
+peft==0.7.1
+sentence-transformers==5.4.1
+tokenizers==0.15.2
+transformers==4.36.2
