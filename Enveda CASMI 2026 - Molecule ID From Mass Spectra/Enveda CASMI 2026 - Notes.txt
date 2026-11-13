@@ -1,0 +1,16 @@
+https://www.kaggle.com/competitions/enveda-CASMI26-molecule-id-mass-spectra
+
+Ranker branch — closed (2026-11-13). LightGBM ranker (Cells 19b/19c) scored 0.189, identical to the transformer baseline and 18a's weighted merge. Diagnosis: the 0.91 eval MRR was train-overlap, not signal. c1_is_true is uncomputable at test time (needs true inchikey); c1_sim/n_cand are constant within a molecule, so they can't drive within-molecule ranking; dropping c1_is_true left eval MRR unchanged at 0.9108, confirming it was never doing work. Ranker-top1 agreement with Channel 1 was 329/400 — it mostly restates Channel 1, and the override pins the remaining 71. Three ranking mechanisms (RRF, 0.7/0.3 merge, LightGBM) → one score: 0.189. This is a candidate-coverage ceiling, not a ranking problem. Do not revisit without class-hiding validation (GitHub 0.313 approach: hold out target spectra while keeping structures as candidates). Code Competition note: the committed notebook re-runs Cells 19a/19b (~48 min) on every rerun — refactor to inference-only by uploading ranker.pkl as a dataset before any future submission.
+
+
+Next steps if resumed (in order, each ~1 day):
+
+Class-hiding validation rebuild. Modify Cells 17/17a to mask held-out molecules' spectra from the Channel 1 library and representative library, while keeping their structures in pool_ik_sorted/pool_smiles_sorted (Cell 16). Query with the held-out molecules' spectra, score with MRR@25. This is the only validation that simulates the hidden Class 2/3 distribution. If your pipeline scores ~0.19 on it, the gap to 0.313 is model, not eval. If it collapses below 0.19, your current number was never real. Either way you learn something.
+
+Refactor to inference-only notebook. Upload ranker.pkl (and optionally pool_b_features.parquet) as a Kaggle dataset. Delete Cells 19a/19b from the committed notebook. Change 19c to read ranker.pkl from /kaggle/input/.../. Removes ~48 min from every rerun and the train.parquet schema dependency.
+
+Neutral-loss scoring in Channel 1/analog. Cheap change to the _ent kernel: compare neutral losses (precursor − fragment) instead of raw m/z, plus square-root intensity scaling. Directly targets isomer discrimination, which mass_ppm cannot. Test on class-hiding validation first, not the placeholder.
+
+If (1) shows the pipeline is real on hidden distribution: compare against GitHub Majyles/kaggle-casmi-2026 (0.313) on the same validation. The gap is then model/pipeline, and the repo is the reference. If (1) shows collapse, the problem is coverage, and the next step is pool expansion done right (isomer-aware, not PubChemLite-scale).
+
+Do not revisit: v2 dedup, Channel 1 override, PubChemLite expansion, analog weighted merge, LightGBM ranker. All tried, all flat or worse.
